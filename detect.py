@@ -22,43 +22,26 @@ from utils.general import (
 from utils.torch_utils import select_device, load_classifier, time_synchronized
 from websocket import create_connection
 import logging
+import asyncio
 
 test=0
 picture=0
 today1=0
 
-def socket1():
-    with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s2:
-                         s2.connect(('127.0.0.1', 50007))
-                         BUFFER_SIZE=1024
-                         data1='1'
-                         s2.send(data1.encode())
-                         print(s2.recv(BUFFER_SIZE).decode())
-
-def socket2():
-    with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s2:
-                         s2.connect(('127.0.0.1', 50007))
-                         BUFFER_SIZE=1024
-                         data1='2'
-                         s2.send(data1.encode())
-                         print(s2.recv(BUFFER_SIZE).decode())
-
-
-
-
-
+async def tcp_echo_client(message):
+    reader, writer = await asyncio.open_connection(
+        '127.0.0.1', 8888)
+    print(f'Send: {message!r}')
+    writer.write(message.encode())
+    data = await reader.read(100)
+    print(f'Received: {data.decode()!r}')
+    print('Close the connection')
+    writer.close()
 def detect(save_img=False):
     out, source, weights, view_img, save_txt, imgsz = \
         opt.output, opt.source, opt.weights, opt.view_img, opt.save_txt, opt.img_size
     webcam = source.isnumeric() or source.startswith(('rtsp://', 'rtmp://', 'http://')) or source.endswith('.txt')
     #開始通知
-    line_notify_token = ''
-    line_notify_api = 'https://notify-api.line.me/api/notify'
-    message = 'プログラムを開始します.'
-    payload = {'message': message}
-    headers = {'Authorization': 'Bearer ' + line_notify_token} 
-    line_notify = requests.post(line_notify_api, data=payload, headers=headers)
-    #初期化
     set_logging()
     device = select_device(opt.device)
     if os.path.exists(out):
@@ -142,38 +125,25 @@ def detect(save_img=False):
                     label1 = str((names[int(c)]))  # add to string
                     if label1=="no-mask":
                      print("マスクをしていません")
-                     cv2.imwrite('nomask.jpg',im0)
-                     img = cv2.imread('nomask.jpg')
+                     #cv2.imwrite('nomask.jpg',im0)
+                     #img = cv2.imread('nomask.jpg')
+                     asyncio.run(tcp_echo_client('2'))
                      #cv2.imshow('nomask', img)
-                     line_notify_token = ''
-                     line_notify_api = 'https://notify-api.line.me/api/notify'
-                     message = str(dt_now)+'NG-mask'
-                     payload = {'message': message}
-                     headers = {'Authorization': 'Bearer ' + line_notify_token} 
-                     line_notify = requests.post(line_notify_api, data=payload, headers=headers)
-                     #socket1()
-                     #socket3()
+
                      with open('daystext/'+str(d_today)+'.txt', 'a') as f:
                          dt_now = datetime.datetime.now()
                          f.write(str(dt_now)+"maskをしていません."+"\n")
-                     sleep(2)
                     if label1=="ok-mask":
                      print("マスクをしています.")
-                     cv2.imwrite('mask.jpg',im0)
-                     img = cv2.imread('mask.jpg')
+                     asyncio.run(tcp_echo_client('1'))
+                     #cv2.imwrite('mask.jpg',im0)
+                     #img = cv2.imread('mask.jpg')
                      #cv2.imshow('mask', img)
-                     line_notify_token = ''
-                     line_notify_api = 'https://notify-api.line.me/api/notify'
-                     message = str(dt_now)+'OK-mask'
-                     payload = {'message': message}
-                     headers = {'Authorization': 'Bearer ' + line_notify_token} 
-                     line_notify = requests.post(line_notify_api, data=payload, headers=headers)
-                     #socket2()
-                     #socket4()
+
                      with open('daystext/'+str(d_today)+'.txt', 'a') as f:
                          dt_now = datetime.datetime.now()
                          f.write(str(dt_now)+"maskをしていました"+"\n")
-                     sleep(2)
+
 #==================================================================================================#
 #                    if label1=="ok-mask":
 #                     print("本を発見しました")
